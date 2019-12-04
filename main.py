@@ -10,108 +10,104 @@ sns.set_style('darkgrid')
 # Statistics
 from scipy import stats
 from scipy.stats import norm, skew
+from sklearn.preprocessing import StandardScaler
+# Measure Elapsed Time
+import time 
 
 
+# Data Cleanup:
+# Target Variable Distribution
+# Remove Missing Variables
+# Remove Outliers
+# Remove Correlated Variables
+# Convert some numerical values into categorical
+# StandardScaler all features
+# Do Heat Transfer
+# Modelling:
+# Test-Train Split
+# Tune Hyperparameters
+# Run on Test Data
+# Calculate RSME Values between predicted and Test Data
+# Finish off report
+
+# Read the training data
 train = pd.read_csv('train.csv')
-test = pd.read_csv('test.csv')
 print(train.head(5))
 
 #Save the 'Id' column
 train_ID = train['Id']
-test_ID = test['Id']
+
+#Now drop the  'Id' colum since it's unnecessary for  the prediction process.
+train.drop("Id", axis = 1, inplace = True)
+
+#Check the size of the data
+print(f"The train data size after dropping Id feature is : {train.shape}")
+
+#
+
+k = 10
+corrmat = train.corr()
+f, ax = plt.subplots(figsize=(8,8))
+cols = corrmat.nlargest(k, 'SalePrice')['SalePrice'].index
+cm = np.corrcoef(train[cols].values.T)
+sns.set(font_scale=1.25)
+hm = sns.heatmap(cm, cbar=True, annot=True, square=True, fmt='.2f', annot_kws={'size': 10}, yticklabels=cols.values, xticklabels=cols.values)
+
+#scatterplot
+sns.set()
+cols = ['SalePrice', 'OverallQual', 'GrLivArea', 'GarageCars']
+sns.pairplot(train[cols], height=2)
+
+# plt.show()
+
+#missing data
+total = train.isnull().sum().sort_values(ascending=False)
+percent = (train.isnull().sum()/train.isnull().count()).sort_values(ascending=False)
+missing_data = pd.concat([total, percent], axis=1, keys=['Total', 'Percent'])
+# print(missing_data.head(21))
+
+print(train.shape)
+
+#dealing with missing data
+train = train.drop((missing_data[missing_data['Total'] > 1]).index,1)
+train = train.drop(train.loc[train['Electrical'].isnull()].index)
+print(train.isnull().sum().max()) #just checking that there's no missing data missing...
+
+
+#standardizing data
+saleprice_scaled = StandardScaler().fit_transform(train['SalePrice'][:,np.newaxis]);
+low_range = saleprice_scaled[saleprice_scaled[:,0].argsort()][:10]
+high_range= saleprice_scaled[saleprice_scaled[:,0].argsort()][-10:]
+print('outer range (low) of the distribution:')
+print(low_range)
+print('\nouter range (high) of the distribution:')
+print(high_range)
+
+fig, ax = plt.subplots()
+print(train['GrLivArea'].shape, train['SalePrice'].shape)
+ax.scatter(x = train['GrLivArea'], y = train['SalePrice'])
+plt.ylabel('SalePrice', fontsize=13)
+plt.xlabel('GrLivArea', fontsize=13)
+plt.show()
+# Delete outliers
+train = train.drop(train[(train['GrLivArea']>4000) & (train['SalePrice']<300000)].index)
+
+sns.distplot(train['SalePrice'] , fit=norm);
+# Get the fitted parameters used by the function
+(mu, sigma) = norm.fit(train['SalePrice'])
+print( '\n mu = {:.2f} and sigma = {:.2f}\n'.format(mu, sigma))
 
 # Save training 'sale price'
 train_SalePrice = train['SalePrice']
 
-#Now drop the  'Id' colum since it's unnecessary for  the prediction process.
-train.drop("Id", axis = 1, inplace = True)
-test.drop("Id", axis = 1, inplace = True)
+# We use the numpy fuction log1p which  applies log(1+x) to all elements of the column
+train['SalePrice'] = np.log1p(train_SalePrice)
 
-#check again the data size after dropping the 'Id' variable
-print("\nThe train data size after dropping Id feature is : {} ".format(train.shape))
-print("The test data size after dropping Id feature is : {} ".format(test.shape))
-
-# Plan of attack:
-# Tue+ Wed: Dataset Cleanup: Find and drop outliers, input missing data into fields, drop unnessesary features
-# - Figure out which features correlate best with sales price
-# - Figure out which features have a lot of missing values
-# - Drop unnessary features
-# - Find and drop major outliers
-# - Input missing values
-# Thursday: Apply models (KNN, Ridge, Neural Networks), First Draft of Report
-# Friday: Finish Report
-
-# START HERE
-
-
-
-#
-
-# fig, ax = plt.subplots()
-# ax.scatter(x = train['GrLivArea'], y = train_SalePrice)
-# plt.ylabel('SalePrice', fontsize=13)
-# plt.xlabel('GrLivArea', fontsize=13)
-# plt.show()
-
-# Delete outliers
-# train = train.drop(train[(train['GrLivArea']>4000) & (train['SalePrice']<300000)].index)
-
-
-# fig, ax = plt.subplots()
-# ax.scatter(x = train['GrLivArea'], y = train_SalePrice)
-# plt.ylabel('SalePrice', fontsize=13)
-# plt.xlabel('GrLivArea', fontsize=13)
-
-
-
-
-# sns.distplot(train_SalePrice , fit=norm);
-# Get the fitted parameters used by the function
-# (mu, sigma) = norm.fit(train['SalePrice'])
-# print( '\n mu = {:.2f} and sigma = {:.2f}\n'.format(mu, sigma))
-
-#Now plot the distribution
-# plt.legend(['Normal dist. ($\mu=$ {:.2f} and $\sigma=$ {:.2f} )'.format(mu, sigma)],
-#             loc='best')
-# plt.ylabel('Frequency')
-# plt.title('SalePrice distribution')
-
-
-#####
-#We use the numpy fuction log1p which  applies log(1+x) to all elements of the column
-# train["SalePrice"] = np.log1p(train_SalePrice)
-
-#Check the new distribution
-# sns.distplot(train_SalePrice , fit=norm);
+# Check the new distribution
+sns.distplot(train['SalePrice'], fit=norm);
 
 # Get the fitted parameters used by the function
-# (mu, sigma) = norm.fit(train["SalePrice"])
-# print( '\n mu = {:.2f} and sigma = {:.2f}\n'.format(mu, sigma))
+(mu, sigma) = norm.fit(train["SalePrice"])
+print( '\n mu = {:.2f} and sigma = {:.2f}\n'.format(mu, sigma))
 
-#Now plot the distribution
-# plt.legend(['Normal dist. ($\mu=$ {:.2f} and $\sigma=$ {:.2f} )'.format(mu, sigma)],
-#             loc='best')
-# plt.ylabel('Frequency')
-# plt.title('SalePrice distribution')
-# plt.show()
-
-# #Get also the QQ-plot
-# fig = plt.figure()
-# res = stats.probplot(train['SalePrice'], plot=plt)
-# plt.show()
-
-
-# Features Engineering
-# train.drop("SalePrice", axis = 1, inplace = True)
-
-# ntrain = train.shape[0]
-# ntest = test.shape[0]
-# y_train = train.SalePrice.values
-# all_data = pd.concat((train, test)).reset_index(drop=True)
-# all_data.drop(['SalePrice'], axis=1, inplace=True)
-# print("all_data size is : {}".format(all_data.shape))
-#
-# all_data_na = (all_data.isnull().sum() / len(all_data)) * 100
-# all_data_na = all_data_na.drop(all_data_na[all_data_na == 0].index).sort_values(ascending=False)[:30]
-# missing_data = pd.DataFrame({'Missing Ratio' :all_data_na})
-# print(missing_data)
+train = pd.get_dummies(train)
