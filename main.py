@@ -10,8 +10,7 @@ sns.set_style('darkgrid')
 # Statistics
 from scipy.stats import norm
 from sklearn.preprocessing import StandardScaler
-# Measure Elapsed Time
-import time
+
 
 # Read the training data
 train = pd.read_csv('train.csv')
@@ -70,6 +69,64 @@ sns.distplot(train['1stFlrSF'] , fit=norm)
 print(train.head())
 plt.show()
 
-# (Do this part on Thursday Morning)
+# #############################################################################
+
 # Import ML Algorithms
+from sklearn.model_selection import GridSearchCV
+from sklearn.kernel_ridge import KernelRidge
+from sklearn.neighbors import KNeighborsRegressor
+
+
+# Test-Train Split
+X_vals = train.drop(['SalePrice'], axis = 1)
+X_vals = X_vals.values
+Y_vals = train['SalePrice'].values
+from sklearn.model_selection import train_test_split
+(x_train, x_test, y_train, y_test) = train_test_split(X_vals, Y_vals, test_size = 0.2)
+
+# Grid search CV KRR
+parameters = {
+    'alpha' : [0.1, .01, 1],
+    'kernel' : ['polynomial', 'rbf']
+    }
+grid_search_krr = GridSearchCV(KernelRidge(), parameters)
+grid_search_krr.fit(x_train, y_train)
+print(grid_search_krr.best_params_)
+
+KRR = KernelRidge()
+
+# Grid Search CV KNN
+parameters = {'n_neighbors' : np.arange(1,11)}
+grid_search_knr = GridSearchCV(KNeighborsRegressor(), parameters)
+grid_search_knr.fit(x_train, y_train)
+print(grid_search_knr.best_params_)
+
+KNR = KNeighborsRegressor()
+
+# Build Neural Network
+from keras.callbacks import ModelCheckpoint
+from keras.models import Sequential
+from keras.layers import Dense, Activation, Flatten
+NN_model = Sequential()
+# The Input Layer :
+NN_model.add(Dense(128, kernel_initializer='normal',input_dim = train.shape[1], activation='relu'))
+# The Hidden Layers :
+NN_model.add(Dense(256, kernel_initializer='normal',activation='relu'))
+NN_model.add(Dense(256, kernel_initializer='normal',activation='relu'))
+# The Output Layer :
+NN_model.add(Dense(1, kernel_initializer='normal',activation='linear'))
+# Compile the network :
+NN_model.compile(loss='mean_absolute_error', optimizer='adam', metrics=['mean_absolute_error'])
+NN_model.summary()
+
+
+# Measure Elapsed Time
+import time
+# Fit and predict for each
+
+
+
+
+# Get MAE and RMSE Values for each
+
 # Evaluate Algorithms
