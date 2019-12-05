@@ -52,7 +52,7 @@ train['OverallCond'] = train['OverallCond'].astype(str)
 train['YrSold'] = train['YrSold'].astype(str)
 train['MoSold'] = train['MoSold'].astype(str)
 
-# Standardize numerical values
+# Normalize numerical values
 numeric_feats = train.dtypes[train.dtypes != "object"].index
 for feat in numeric_feats:
     train[feat] = np.log1p(train[feat])
@@ -60,16 +60,12 @@ for feat in numeric_feats:
 scaled_features = StandardScaler().fit_transform(train[numeric_feats].values)
 train[numeric_feats] = scaled_features
 
-print(train.head())
-
 # Dummy Variables
 train = pd.get_dummies(train)
 # Check to see if variables are normalized
-sns.distplot(train['1stFlrSF'] , fit=norm)
-print(train.head())
+# sns.distplot(train['1stFlrSF'] , fit=norm)
+# print(train.head())
 plt.show()
-
-# #############################################################################
 
 # Import ML Algorithms
 from sklearn.model_selection import GridSearchCV
@@ -89,44 +85,48 @@ parameters = {
     'alpha' : [0.1, .01, 1],
     'kernel' : ['polynomial', 'rbf']
     }
-grid_search_krr = GridSearchCV(KernelRidge(), parameters)
+grid_search_krr = GridSearchCV(KernelRidge(), parameters, cv=5)
 grid_search_krr.fit(x_train, y_train)
-print(grid_search_krr.best_params_)
-
-KRR = KernelRidge()
+best_params_krr = grid_search_krr.best_params_
+KRR = KernelRidge(alpha=best_params_krr['alpha'], kernel=best_params_krr['kernel'])
 
 # Grid Search CV KNN
-parameters = {'n_neighbors' : np.arange(1,11)}
-grid_search_knr = GridSearchCV(KNeighborsRegressor(), parameters)
+parameters = {'n_neighbors' : np.arange(1,16)}
+grid_search_knr = GridSearchCV(KNeighborsRegressor(), parameters, cv=5)
 grid_search_knr.fit(x_train, y_train)
-print(grid_search_knr.best_params_)
+best_params_knr = grid_search_knr.best_params_
+KNR = KNeighborsRegressor(n_neighbors=best_params_knr['n_neighbors'])
 
-KNR = KNeighborsRegressor()
 
 # Build Neural Network
-from keras.callbacks import ModelCheckpoint
 from keras.models import Sequential
-from keras.layers import Dense, Activation, Flatten
+from keras.layers import Dense
 NN_model = Sequential()
-# The Input Layer :
-NN_model.add(Dense(128, kernel_initializer='normal',input_dim = train.shape[1], activation='relu'))
-# The Hidden Layers :
+NN_model.add(Dense(128, kernel_initializer='normal',input_dim = x_train.shape[1], activation='relu'))
 NN_model.add(Dense(256, kernel_initializer='normal',activation='relu'))
 NN_model.add(Dense(256, kernel_initializer='normal',activation='relu'))
-# The Output Layer :
 NN_model.add(Dense(1, kernel_initializer='normal',activation='linear'))
-# Compile the network :
 NN_model.compile(loss='mean_absolute_error', optimizer='adam', metrics=['mean_absolute_error'])
-NN_model.summary()
 
-
-# Measure Elapsed Time
-import time
 # Fit and predict for each
-
-
-
+KRR.fit(x_train, y_train)
+krr_predict = KRR.predict(x_test)
+KNR.fit(x_train, y_train)
+knr_predict = KNR.predict(x_test)
+NN_model.fit(x_train, y_train)
+nnm_predict = NN_model.predict(x_test)
+nnm_predict = nnm_predict.reshape(-1)
+breakpoint()
 
 # Get MAE and RMSE Values for each
+from sklearn.metrics import mean_squared_error, r2_score
+
+krr_rmse = mean_squared_error(y_test, krr_predict, squared=False)
+knr_rmse = mean_squared_error(y_test, knr_predict, squared=False)
+nnm_rmse = mean_squared_error(y_test, nnm_predict, squared=False)
+krr_r2 = r2_score(y_test, krr_predict)
+knr_r2 = r2_score(y_test, knr_predict)
+nnm_r2 = r2_score(y_test, nnm_predict)
 
 # Evaluate Algorithms
+print(f"Ridge Regression {krr_rmse, krr_r2}\nNeighbors Regression: {knr_rmse, knr_r2}\nNeural Network {nnm_rmse, nnm_r2}")
